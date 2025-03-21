@@ -1,17 +1,23 @@
+import keras.src.losses
 import pandas as pd
 import numpy as np
 import re
 import math
 import os
 
+from keras.src.ops import nn
+from scikeras.wrappers import KerasClassifier
 import torch
+from keras import Sequential
+from keras.src.layers import Conv1D, MaxPooling1D, Dropout, Flatten, Dense
 # Text and feature engineering
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Evaluation and tuning
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             f1_score, roc_curve, auc)
+                             f1_score, roc_curve, auc, make_scorer)
+from skorch.callbacks import EpochScoring
 
 # Classifier
 from classifier import ConvolutionalAttention
@@ -100,7 +106,7 @@ pd_tplusb.to_csv('Title+Body.csv', index=False, columns=["id", "Number", "sentim
 datafile = 'Title+Body.csv'
 
 # 2) Number of repeated experiments
-REPEAT = 10
+REPEAT = 30
 
 # 3) Output CSV file name
 out_csv_name = f'../{project}_NB.csv'
@@ -121,7 +127,7 @@ data[text_col] = data[text_col].apply(clean_str)
 # ========== Hyperparameter grid ==========
 # We use logspace for var_smoothing: [1e-12, 1e-11, ..., 1]
 params = {
-    'module__embed_dim': [32, 64],
+    'module__num_channels': [16, 32],
 }
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -151,19 +157,29 @@ for repeated_time in range(REPEAT):
     y_train = data['sentiment'].iloc[train_index]
     y_test  = data['sentiment'].iloc[test_index]
 
+    def collate_fn(batch):
+        X, y = zip(*batch)
+        X = torch.tensor(np.stack(X), dtype=torch.float32)
+        y = torch.tensor(np.array(y), dtype=torch.float32)
+        return X, y
+
     # --- 4.3 Convolutional Attention model & GridSearch ---
     clf = NeuralNetClassifier(
         module=ConvolutionalAttention,
-        module__embed_dim=64,
-        module__num_classes=10,
-        max_epochs=10,
+        module__num_channels=64,
+        module__num_classes=1,
+        max_epochs=20,
         lr=0.001,
-        device='cuda' if torch.cuda.is_available() else 'cpu'
+        device='cuda' if torch.cuda.is_available() else 'cpu',
+        iterator_train__collate_fn=collate_fn,
+        iterator_valid__collate_fn=collate_fn,
+        criterion=torch.nn.BCEWithLogitsLoss,
     )
+
     grid = GridSearchCV(
         clf,
         params,
-        cv=3,              # 5-fold CV (can be changed)
+        cv=5,              # 5-fold CV (can be changed)
         scoring='roc_auc'  # Using roc_auc as the metric for selection
     )
     grid.fit(X_train, y_train)
@@ -180,15 +196,15 @@ for repeated_time in range(REPEAT):
     accuracies.append(acc)
 
     # Precision (macro)
-    prec = precision_score(y_test, y_pred, average='macro')
+    prec = precision_score(y_test, y_pred, average='weighted', zero_division=0)
     precisions.append(prec)
 
     # Recall (macro)
-    rec = recall_score(y_test, y_pred, average='macro')
+    rec = recall_score(y_test, y_pred, average='weighted', zero_division=0)
     recalls.append(rec)
 
     # F1 Score (macro)
-    f1 = f1_score(y_test, y_pred, average='macro')
+    f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
     f1_scores.append(f1)
 
     # AUC
