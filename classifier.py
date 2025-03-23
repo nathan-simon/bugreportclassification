@@ -38,7 +38,6 @@ class AttentionBlock(nn.Module):
     def __init__(self, num_channels, num_heads):
         super(AttentionBlock, self).__init__()
         assert num_channels % num_heads == 0, "embed_dim must be divisible by num_heads"
-        self.embed_dim = num_channels
         self.num_heads = num_heads
         self.head_dim = num_channels // num_heads
 
