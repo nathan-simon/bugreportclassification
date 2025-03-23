@@ -1,23 +1,16 @@
-import keras.src.losses
 import pandas as pd
 import numpy as np
 import re
-import math
 import os
 
-from keras.src.ops import nn
-from scikeras.wrappers import KerasClassifier
 import torch
-from keras import Sequential
-from keras.src.layers import Conv1D, MaxPooling1D, Dropout, Flatten, Dense
 # Text and feature engineering
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Evaluation and tuning
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             f1_score, roc_curve, auc, make_scorer)
-from skorch.callbacks import EpochScoring
+                             f1_score, roc_curve, auc)
 
 # Classifier
 from classifier import ConvolutionalAttention

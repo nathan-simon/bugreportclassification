@@ -5,7 +5,16 @@ import torch.nn.functional as F
 import numpy as np
 
 class Nin(nn.Module):
-    def __init__(self, in_channels, out_channels, scale=1.0):  # increased scale from 1e-10 to 1.0
+    """
+    1x1 convolution class, used as part of the multi-head attention mechanism.
+    Inspired from https://github.com/MaximeVandegar/Papers-in-100-Lines-of-Code/blob/main/Denoising_Diffusion_Probabilistic_Models/unet.py
+    Adapted for 1D data.
+
+    :param in_channels: number of input dimensions
+    :param out_channels: number of output dimensions
+    :return: scaled output tensor
+    """
+    def __init__(self, in_channels, out_channels, scale=1.0):
         super(Nin, self).__init__()
         n = (in_channels + out_channels) / 2
         limit = np.sqrt(3 * scale / n)
@@ -18,25 +27,33 @@ class Nin(nn.Module):
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, embed_dim, num_heads):
+    """
+    Multihead Attention Mechanism, each attention output concatenated and then finally linearly transformed to correct dimensions.
+    Enables the CNN to focus on different aspects of the "Bag of Words" provided as input, enabling richer understanding of data.
+
+    :param num_channels: number of channels in the input tensor
+    :param num_heads: number of heads to use in attention mechanism
+    :return: final output (concat of all attention outputs)
+    """
+    def __init__(self, num_channels, num_heads):
         super(AttentionBlock, self).__init__()
-        assert embed_dim % num_heads == 0, "embed_dim must be divisible by num_heads"
-        self.embed_dim = embed_dim
+        assert num_channels % num_heads == 0, "embed_dim must be divisible by num_heads"
+        self.embed_dim = num_channels
         self.num_heads = num_heads
-        self.head_dim = embed_dim // num_heads
+        self.head_dim = num_channels // num_heads
 
-        self.W_q = Nin(embed_dim, embed_dim)
-        self.W_k = Nin(embed_dim, embed_dim)
-        self.W_v = Nin(embed_dim, embed_dim)
+        self.query = Nin(num_channels, num_channels)
+        self.key = Nin(num_channels, num_channels)
+        self.value = Nin(num_channels, num_channels)
 
-        self.W_o = nn.Linear(embed_dim, embed_dim)
+        self.out = nn.Linear(num_channels, num_channels)
 
     def forward(self, x):
-        batch_size, embed_dim, seq_length  = x.shape
+        batch_size, num_channels, seq_length  = x.shape
 
-        Q = self.W_q(x)
-        K = self.W_k(x)
-        V = self.W_v(x)
+        Q = self.query(x)
+        K = self.key(x)
+        V = self.value(x)
 
         Q = Q.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
         K = K.reshape(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
@@ -46,19 +63,29 @@ class AttentionBlock(nn.Module):
         attn_weights = F.softmax(scores, dim=-1)
 
         attn_output = torch.matmul(attn_weights, V)
-        attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_length, embed_dim)
+        attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, seq_length, num_channels)
 
-        output = self.W_o(attn_output).permute(0, 2, 1)
+        output = self.out(attn_output).permute(0, 2, 1)
         return output
 
 class ResNetBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, dropout_rate=0.2):
+    """
+    Residual Block of CNN. Performs convolutions on data, as well as dropout (random deactivations of neurons)
+    Using Leaky ReLU as activation function, as well as group normalisation.
+
+    :param in_channels: number of input dimensions
+    :param out_channels: number of output dimensions
+    :param dropout_rate: probability of deactivation of neuron
+
+    :return: convolved tensor, ready to be passed to next layer
+    """
+    def __init__(self, in_channels, out_channels, dropout_rate=0.2):
         super(ResNetBlock, self).__init__()
         self.dropout_rate = dropout_rate
-        self.convolution1 = nn.Conv1d(in_ch, out_ch, kernel_size=3, stride=1, padding=1)
-        self.convolution2 = nn.Conv1d(out_ch, out_ch, kernel_size=3, stride=1, padding=1)
-        if not (in_ch == out_ch):
-            self.nin = Nin(in_ch, out_ch)
+        self.convolution1 = nn.Conv1d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.convolution2 = nn.Conv1d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        if not (in_channels == out_channels):
+            self.nin = Nin(in_channels, out_channels)
 
     def forward(self, x):
         h = self.convolution1(x)
@@ -76,6 +103,12 @@ class ResNetBlock(nn.Module):
         return x + h
 
 class Encoder(nn.Module):
+    """
+    Encoding mechanism, convolves input with a stride of 2 to downsize the input vector, capturing abstract features of the data.
+
+    :param in_channels: number of input dimensions
+    :return: tensor with half the sequence length
+    """
     def __init__(self, in_channels):
         super(Encoder, self).__init__()
         self.conv = nn.Conv1d(in_channels, in_channels, kernel_size=3, stride=2, padding=1)
@@ -85,6 +118,15 @@ class Encoder(nn.Module):
         return h
 
 class ConvolutionalAttention(nn.Module):
+    """
+    Convolutional Attention Module.
+    Main module that acts as a classifier. 3 residual layers between each subsidiary layer.
+    Final output involves softmax, sum and fully connected output layer to compute logits.
+
+    :param: num_channels: number of input dimensions
+    :param: num_classes: number of classes to predict (in this case 2 since binary classification)
+    :return: tensor with logits
+    """
     def __init__(self, num_channels, num_classes):
         super(ConvolutionalAttention, self).__init__()
         self.output_layer = nn.Linear(4 * num_channels, num_classes)
