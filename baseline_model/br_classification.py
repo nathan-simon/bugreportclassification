@@ -69,7 +69,7 @@ def clean_str(string):
 import os
 import subprocess
 # Choose the project (options: 'pytorch', 'tensorflow', 'keras', 'incubator-mxnet', 'caffe')
-project = 'pytorch'
+project = 'tensorflow'
 path = f'datasets/{project}.csv'
 
 pd_all = pd.read_csv(path)
@@ -97,7 +97,7 @@ pd_tplusb.to_csv('Title+Body.csv', index=False, columns=["id", "Number", "sentim
 datafile = 'Title+Body.csv'
 
 # 2) Number of repeated experiments
-REPEAT = 10
+REPEAT = 30
 
 # 3) Output CSV file name
 out_csv_name = f'../{project}_NB.csv'
@@ -201,27 +201,3 @@ print(f"Average Precision:     {final_precision:.4f}")
 print(f"Average Recall:        {final_recall:.4f}")
 print(f"Average F1 score:      {final_f1:.4f}")
 print(f"Average AUC:           {final_auc:.4f}")
-
-# Save final results to CSV (append mode)
-try:
-    # Attempt to check if the file already has a header
-    existing_data = pd.read_csv(out_csv_name, nrows=1)
-    header_needed = False
-except:
-    header_needed = True
-
-df_log = pd.DataFrame(
-    {
-        'repeated_times': [REPEAT],
-        'Accuracy': [final_accuracy],
-        'Precision': [final_precision],
-        'Recall': [final_recall],
-        'F1': [final_f1],
-        'AUC': [final_auc],
-        'CV_list(AUC)': [str(auc_values)]
-    }
-)
-
-df_log.to_csv(out_csv_name, mode='a', header=header_needed, index=False)
-
-print(f"\nResults have been saved to: {out_csv_name}")
