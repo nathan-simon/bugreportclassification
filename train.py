@@ -166,7 +166,7 @@ if __name__ == "__main__":
     # ========== Hyperparameter grid ==========
     # We use logspace for var_smoothing: [1e-12, 1e-11, ..., 1]
     params = {
-        'module__num_channels': [16, 32],
+        'module__num_channels': [32, 64],
     }
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
             iterator_train__collate_fn=collate_fn,
             iterator_valid__collate_fn=collate_fn,
             criterion=torch.nn.BCEWithLogitsLoss,
-            criterion__pos_weight=torch.Tensor([positive_weight]), # this is 100 / 16.4
+            criterion__pos_weight=torch.Tensor([positive_weight]), # this is 100 / percentage from lab1 PDF
             optimizer=torch.optim.Adam,
         )
 

@@ -64,8 +64,10 @@ class ConvolutionalAttention(nn.Module):
     Main module that acts as a classifier. 3 residual layers between each subsidiary layer.
     Final output involves softmax, sum and fully connected output layer to compute logits.
 
+    :param: vocab_size: dimension of vocabulary from tokenisation
     :param: num_channels: number of input dimensions
     :param: num_classes: number of classes to predict (in this case 2 since binary classification)
+    :param: fc_dim: dimension of fully connected layer
     :return: tensor with logits
     """
     def __init__(self, vocab_size, num_channels, num_classes, fc_dim):
@@ -74,12 +76,12 @@ class ConvolutionalAttention(nn.Module):
         self.input_projection = nn.Conv1d(in_channels=1, out_channels=num_channels, kernel_size=1)
         self.blocks = nn.ModuleList([
             ResNetBlock(num_channels, num_channels),
-            ResNetBlock(num_channels, num_channels),
-            ResNetBlock(num_channels, num_channels)
+            ResNetBlock(num_channels, 2 * num_channels),
+            ResNetBlock(2 * num_channels, 2 * num_channels)
         ])
-        self.multihead_attention = nn.MultiheadAttention(embed_dim=num_channels, num_heads=4, dropout=0.1)
+        self.multihead_attention = nn.MultiheadAttention(embed_dim=2 * num_channels, num_heads=4, dropout=0.1)
         self.dropout = nn.Dropout(0.4)
-        self.fully_connected = nn.Linear(num_channels, fc_dim)
+        self.fully_connected = nn.Linear(2 * num_channels, fc_dim)
         self.output_layer = nn.Linear(fc_dim, num_classes)
 
     def forward(self, x):
