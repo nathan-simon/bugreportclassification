@@ -45,10 +45,10 @@ class ResNetBlock(nn.Module):
 
     def forward(self, x):
         h = self.convolution1(x)
-        h = nn.functional.leaky_relu(nn.functional.group_norm(h, num_groups=16), 0.4)
-        h = nn.functional.dropout(h, p=self.dropout_rate)
+        h = F.leaky_relu(F.group_norm(h, num_groups=16), 0.4)
+        h = F.dropout(h, p=self.dropout_rate)
         h = self.convolution2(h)
-        h = nn.functional.leaky_relu(nn.functional.group_norm(h, num_groups=16), 0.4)
+        h = F.leaky_relu(F.group_norm(h, num_groups=16), 0.4)
 
         if not (x.shape[1] == h.shape[1]):
             x = self.nin(x)
@@ -99,7 +99,7 @@ class ConvolutionalAttention(nn.Module):
         pooled_out = F.max_pool1d(h, kernel_size=h.shape[2]).squeeze(2)
 
         out = self.dropout(pooled_out)
-        out = F.relu(self.fully_connected(out))
+        out = F.leaky_relu(self.fully_connected(out), 0.4)
         out = self.dropout(out)
 
         logits = self.output_layer(out)

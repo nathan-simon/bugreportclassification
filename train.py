@@ -187,7 +187,7 @@ if __name__ == "__main__":
         )
 
         # --- 4.2 Tokenisation ---
-        text_vectoriser = keras.src.layers.TextVectorization(max_tokens=10000, output_sequence_length=50)
+        text_vectoriser = keras.layers.TextVectorization(max_tokens=10000, output_sequence_length=50)
         text_vectoriser.adapt(data[text_col])
         vocab_size = len(text_vectoriser.get_vocabulary())
         X_all = text_vectoriser(data[text_col]).numpy()

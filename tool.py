@@ -114,21 +114,21 @@ vectoriser_filename = "vectoriser.joblib.pkl"
 load_vectoriser(vectoriser_filename)
 
 root = tk.Tk()
-root.title("Bug Report Analyser")
+root.title("Bug Report Predictor")
 
-title_label = tk.Label(root, text="Bug Report Title:")
+title_label = tk.Label(root, text="Bug Report Title:", font="Calibri")
 title_label.pack(pady=(10, 0))
 
-title_entry = tk.Entry(root, width=50)
+title_entry = tk.Entry(root, width=50, font="Calibri")
 title_entry.pack(padx=10, pady=(0, 10))
 
-description_label = tk.Label(root, text="Bug Report Description:")
+description_label = tk.Label(root, text="Bug Report Description:", font="Calibri")
 description_label.pack()
 
-description_text = tk.Text(root, width=50, height=10, font="Arial")
+description_text = tk.Text(root, width=50, height=10, font="Calibri")
 description_text.pack(padx=10, pady=(0, 10))
 
-submit_button = tk.Button(root, text="Analyse", command=on_submit)
+submit_button = tk.Button(root, text="Predict", command=on_submit)
 submit_button.pack(pady=(0, 10))
 
 result_label = tk.Label(root, text="", font=("Arial", 12))
