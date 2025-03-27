@@ -5,6 +5,7 @@ import re
 import os
 import joblib
 from pathlib import Path
+from scipy.stats import wilcoxon
 
 import torch
 # Text and feature engineering
@@ -263,6 +264,28 @@ if __name__ == "__main__":
     final_f1        = np.mean(f1_scores)
     final_auc       = np.mean(auc_values)
 
+    csv_file = f"baseline_model/nb_results_{project}.csv"
+    nb_df = pd.read_csv(csv_file)
+    nb_accuracies = nb_df["accuracies"].values
+    nb_fmeasures = nb_df["fmeasures"].values
+    nb_aucs = nb_df["aucs"].values
+
+    # Calculate wilcoxon signed rank values
+    accuracy_stat, accuracy_p = wilcoxon(accuracies, nb_accuracies)
+    fmeasure_stat, fmeasure_p = wilcoxon(f1_scores, nb_fmeasures)
+    auc_stat, auc_p = wilcoxon(auc_values, nb_aucs)
+
+    scores = pd.DataFrame({
+        "index": np.arange(1, len(accuracies) + 1),
+        "accuracies": accuracies,
+        "fmeasures": f1_scores,
+        "aucs": auc_values
+    })
+
+    csv_file = f"cnn_results_{project}.csv"
+    scores.to_csv(csv_file, index=False)
+    print("Saved results.")
+
     print("=== Attention-CNN + Tokenisation Results ===")
     print(f"Number of repeats:     {REPEAT}")
     print(f"Average Accuracy:      {final_accuracy:.4f}")
@@ -270,6 +293,11 @@ if __name__ == "__main__":
     print(f"Average Recall:        {final_recall:.4f}")
     print(f"Average F1 score:      {final_f1:.4f}")
     print(f"Average AUC:           {final_auc:.4f}")
+
+    print("=== Wilcoxon Signed-Rank Test Results ===")
+    print(f"Accuracy: statistic = {accuracy_stat:.4f}, p-value = {accuracy_p:.4f}")
+    print(f"F-Measure: statistic = {fmeasure_stat:.4f}, p-value = {fmeasure_p:.4f}")
+    print(f"ROC AUC: statistic = {auc_stat:.4f}, p-value = {auc_p:.4f}")
 
     # Saving Trained Model #
     if use_all_projects: # only want to do it when building model for GUI

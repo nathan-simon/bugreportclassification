@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import re
 import math
+from scipy.stats import wilcoxon
 
 # Text and feature engineering
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -193,6 +194,17 @@ final_precision = np.mean(precisions)
 final_recall    = np.mean(recalls)
 final_f1        = np.mean(f1_scores)
 final_auc       = np.mean(auc_values)
+
+scores = pd.DataFrame({
+    "index": np.arange(1, len(accuracies) + 1),
+    "accuracies": accuracies,
+    "fmeasures": f1_scores,
+    "aucs": auc_values
+})
+
+csv_file = f"nb_results_{project}.csv"
+scores.to_csv(csv_file, index=False)
+print("Saved results.")
 
 print("=== Naive Bayes + TF-IDF Results ===")
 print(f"Number of repeats:     {REPEAT}")
